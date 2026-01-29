@@ -4,6 +4,7 @@ from typing import List
 import chromadb
 import numpy as np
 
+from chromadb.config import Settings
 
 class VectorDB:
     def __init__(self, collection_name:str = "text", dir:str ="./Db"):
@@ -16,14 +17,24 @@ class VectorDB:
     def _initialize_store(self):
         try:
             os.makedirs(self.dir, exist_ok=True)
-            self.client = chromadb.dir(path=self.dir)
 
-            self.collection = self.client.get_or_create_collection(name=self.collection_name,
-                                                                   metadata={"description": "Text embeddings"})
+            self.client = chromadb.Client(
+                Settings(
+                    persist_directory=self.dir,
+                    anonymized_telemetry=False,
+                )
+            )
+
+            self.collection = self.client.get_or_create_collection(
+                name=self.collection_name,
+                metadata={"description": "Text embeddings"}
+            )
+
             print("ChromaDB initialized successfully.")
 
         except Exception as e:
             print(f"Error initializing store: {e}")
+
 
     def add_Document(self , document:List[any] , embeddings:np.ndarray):
         
@@ -38,7 +49,7 @@ class VectorDB:
         for i,(doc , emb) in enumerate(zip(document, embeddings)):
             ids.append(str(i))
             metadatas.append({"source": "text"})
-            document_text.append(doc)
+            document_text.append(doc.page_content)
             embeddings_list.append(emb.tolist())
 
         try:
