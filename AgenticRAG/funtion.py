@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Callable, List, TypedDict
 
 from langchain_core.documents import Document
-from langgraph.graph import END, StateGraph
 
 
 class AgentState(TypedDict, total=False):
@@ -141,34 +140,28 @@ def make_generate_answer_node(llm: Any) -> Callable[[AgentState], AgentState]:
     return generate_answer
 
 
-def _route_retrieval(state: AgentState) -> str:
-    return "retrieve_documents" if state.get("needs_retrieval", False) else "generate_answer"
-
-
-def build_agentic_rag_graph(retriever: Any, llm: Any):
+class AgenticRAGPipeline:
     """
-    Create and compile an agentic RAG graph.
-
-    Flow:
-    decide_retrieval -> (retrieve_documents | generate_answer) -> END
+    Lightweight non-graph pipeline with the same invoke-style API.
     """
-    graph = StateGraph(AgentState)
 
-    graph.add_node("decide_retrieval", decide_retrieval)
-    graph.add_node("retrieve_documents", make_retrieve_documents_node(retriever))
-    graph.add_node("generate_answer", make_generate_answer_node(llm))
+    def __init__(self, retriever: Any, llm: Any):
+        self._retrieve_documents = make_retrieve_documents_node(retriever)
+        self._generate_answer = make_generate_answer_node(llm)
 
-    graph.set_entry_point("decide_retrieval")
+    def invoke(self, state: AgentState) -> AgentState:
+        current_state: AgentState = {**state}
+        current_state = decide_retrieval(current_state)
 
-    graph.add_conditional_edges(
-        "decide_retrieval",
-        _route_retrieval,
-        {
-            "retrieve_documents": "retrieve_documents",
-            "generate_answer": "generate_answer",
-        },
-    )
-    graph.add_edge("retrieve_documents", "generate_answer")
-    graph.add_edge("generate_answer", END)
+        if current_state.get("needs_retrieval", False):
+            current_state = self._retrieve_documents(current_state)
 
-    return graph.compile()
+        current_state = self._generate_answer(current_state)
+        return current_state
+
+
+def build_agentic_rag_pipeline(retriever: Any, llm: Any) -> AgenticRAGPipeline:
+    """
+    Build a non-graph agentic RAG pipeline.
+    """
+    return AgenticRAGPipeline(retriever=retriever, llm=llm)

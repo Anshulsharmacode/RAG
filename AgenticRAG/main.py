@@ -1,10 +1,8 @@
-from pathlib import Path
-
 from langchain_community.document_loaders import TextLoader
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from funtion import build_agentic_rag_graph
+from funtion import build_agentic_rag_pipeline
 from llm import get_chat_model, get_embedding_model
 
 
@@ -25,7 +23,7 @@ def main():
     retriever = build_retriever()
     llm = get_chat_model(model="llama3.2:1b", temperature=0)
 
-    app = build_agentic_rag_graph(retriever=retriever, llm=llm)
+    app = build_agentic_rag_pipeline(retriever=retriever, llm=llm)
 
     question = "Explain what this text is mainly about."
     result = app.invoke({"question": question})
